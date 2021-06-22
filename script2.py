@@ -11,6 +11,25 @@ import time                 #Wait before proceeding further into the UDP or TCP 
 ################# TCP and UDP section ###################
 
 
+'''
+tcp and udp port scanner, use non-blocking sockets.
+
+The tcp scan is a simple connect scan using epoll.
+
+The udp scan is more complicated. A closed port is where the subsequent sends throw an ECONNREFUSED errno. 
+This is effectively detecting ICMP "Destination Unreachable" type 3 code 3 errors. An open port is 
+where the udp response is received. A port may also be "possibly open" due to the lack of a response or error 
+from the target. These are returned as a separate list.
+
+The udp scan also accounts for rate-limiting of ICMP port unreachable errors at the target. 
+Because of this, advanced scanning of 1024 udp ports can take around 20 minutes using udp_scan_ex with 
+the default arguments.
+
+This udp scanning technique is called the "lame" udp scan by nmap.
+'''
+
+
+
 TCP_ASYNC_LIMIT = 256      # number of tcp ports to scan concurrently
 TCP_CONNECT_POLLTIME = 12  # seconds poll waits for async tcp connects
 
@@ -245,6 +264,10 @@ def arp_scan(target_ip):
 
 
 def icmp_scan(address):
+    '''
+    :param address: IP
+    :return: Only print which IP address can be pinged.
+    '''
     res = subprocess.call(['ping', '-c', '3', address], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if res == 0:
         print("The %s address can be ping." % address)
